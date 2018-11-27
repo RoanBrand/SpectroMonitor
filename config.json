@@ -5,7 +5,7 @@
 
 	"transfer_samples_only": false,
 	"result_url": "http://17.0.0.3/lastfurnaceresults",
-	"threshold_seconds": 25,
+	"request_interval_seconds": 25,
 	"display_board_update_rate_seconds": 1,
 	"time_update_url": "http://17.0.0.3/gettime",
 	"time_update_interval_seconds": 300,
