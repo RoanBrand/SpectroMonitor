@@ -8,34 +8,10 @@ import (
 	"time"
 
 	"github.com/RoanBrand/SpectroMonitor/config"
-	"github.com/RoanBrand/SpectroMonitor/displayboard"
-	"github.com/RoanBrand/SpectroMonitor/http"
 	"github.com/RoanBrand/SpectroMonitor/log"
+	"github.com/RoanBrand/SpectroMonitor/spectromon"
 	"github.com/kardianos/service"
 )
-
-type app struct {
-	conf *config.Config
-}
-
-func (p *app) Start(s service.Service) error {
-	go p.run()
-	return nil
-}
-
-func (p *app) run() {
-	log.Setup(p.conf.LogFilePath, !service.Interactive())
-
-	if err := displayboard.Start(p.conf.SerialPortName, p.conf.SerialBaudRate); err != nil {
-		log.Fatal("could not open serial connection:", err)
-	}
-
-	http.Start(p.conf)
-}
-
-func (p *app) Stop(s service.Service) error {
-	return nil
-}
 
 const usageMsg = "Specify config -c=config.json"
 
@@ -71,8 +47,7 @@ func main() {
 		Description: "Powers light indications & time display boards",
 	}
 
-	prg := &app{conf: conf}
-	s, err := service.New(prg, svcConfig)
+	s, err := service.New(spectromon.New(conf), svcConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
