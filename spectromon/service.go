@@ -157,6 +157,9 @@ func (a *app) handleDisplayBoards() {
 			err := a.deltaPLCIO.WriteBytes(a.conf.ModbusAddrDisplays, displayData)
 			if err != nil {
 				log.Println("failed to write display output data on delta PLC IO over Modbus:", err)
+				if err = a.deltaPLCIO.Open(); err != nil {
+					log.Println("error dialing modbus to Delta PLC at", a.conf.ModbusURL)
+				}
 			}
 
 			colon = !colon
@@ -219,6 +222,9 @@ func (a *app) doTask(url string) {
 
 	if err = a.deltaPLCIO.WriteCoils(a.conf.ModbusAddrLights, coils); err != nil {
 		log.Println("failed to set output coils for light on delta PLC IO over Modbus:", err)
+		if err = a.deltaPLCIO.Open(); err != nil {
+			log.Println("error dialing modbus to Delta PLC at", a.conf.ModbusURL)
+		}
 	}
 }
 
