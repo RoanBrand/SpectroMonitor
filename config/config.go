@@ -6,6 +6,10 @@ import (
 )
 
 type Config struct {
+	ModbusURL          string `json:"modbus_url"`
+	ModbusAddrLights   uint16 `json:"modbus_address_start_lights"`
+	ModbusAddrDisplays uint16 `json:"modbus_address_start_displays"`
+
 	SerialPortName string `json:"serial_port_name"`
 	SerialBaudRate int    `json:"serial_baud_rate"`
 
@@ -24,9 +28,9 @@ type Config struct {
 type furnace struct {
 	Name string `json:"name"`
 
-	LightCardAddress  uint8 `json:"light_card_address"`
+	/*LightCardAddress  uint8 `json:"light_card_address"`
 	GreenLightAddress uint8 `json:"green_light_address"`
-	RedLightAddress   uint8 `json:"red_light_address"`
+	RedLightAddress   uint8 `json:"red_light_address"`*/
 
 	DisplayBoardAddress uint8 `json:"display_board_address"`
 }

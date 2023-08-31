@@ -8,10 +8,14 @@ github.com/d2r2/go-shell v0.0.0-20181002100851-c94f62cb3f85 h1:J6zsXuxVaMnX0CXjl
 github.com/d2r2/go-shell v0.0.0-20181002100851-c94f62cb3f85/go.mod h1:FdrNob+jQ3UkEpNVeZFVn8mW86Aa2wa6U5z0vGQOEXQ=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/goburrow/serial v0.1.0 h1:v2T1SQa/dlUqQiYIT8+Cu7YolfqAi3K96UmhwYyuSrA=
+github.com/goburrow/serial v0.1.0/go.mod h1:sAiqG0nRVswsm1C97xsttiYCzSLBmUZ/VSlVLZJ8haA=
 github.com/kardianos/service v0.0.0-20181115005516-4c239ee84e7b h1:vfiqKno48aUndBMjTeWFpCExNnTf2Xnd6d228L4EfTQ=
 github.com/kardianos/service v0.0.0-20181115005516-4c239ee84e7b/go.mod h1:10UU/bEkzh2iEN6aYzbevY7J6p03KO5siTxQWXMEerg=
 github.com/kardianos/service v1.2.2 h1:ZvePhAHfvo0A7Mftk/tEzqEZ7Q4lgnR8sGz4xu1YX60=
 github.com/kardianos/service v1.2.2/go.mod h1:CIMRFEJVL+0DS1a3Nx06NaMn4Dz63Ng6O7dl0qH0zVM=
+github.com/simonvetter/modbus v1.6.0 h1:RDHJevtc7LDIVoHAbhDun8fy+QwnGe+ZU+sLm9ZZzjc=
+github.com/simonvetter/modbus v1.6.0/go.mod h1:hh90ZaTaPLcK2REj6/fpTbiV0J6S7GWmd8q+GVRObPw=
 github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07 h1:UyzmZLoiDWMRywV4DUYb9Fbt8uiOSooupjTq10vpvnU=
 github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07/go.mod h1:kDXzergiv9cbyO7IOYJZWg1U88JhDg3PB6klq9Hg2pA=
 golang.org/x/sys v0.0.0-20181122145206-62eef0e2fa9b h1:MQE+LT/ABUuuvEZ+YQAMSXindAdUh7slEmAkup74op4=

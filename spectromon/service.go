@@ -9,15 +9,15 @@ import (
 	"time"
 
 	"github.com/RoanBrand/SpectroMonitor/config"
-	"github.com/RoanBrand/SpectroMonitor/displayboard"
 	"github.com/RoanBrand/SpectroMonitor/http"
-	"github.com/RoanBrand/SpectroMonitor/lights"
 	"github.com/RoanBrand/SpectroMonitor/log"
 	"github.com/kardianos/service"
+	"github.com/simonvetter/modbus"
 )
 
 type app struct {
-	conf *config.Config
+	conf       *config.Config
+	deltaPLCIO *modbus.ModbusClient
 
 	ctx        context.Context
 	cancelFunc context.CancelFunc
@@ -39,8 +39,24 @@ func (a *app) Start(s service.Service) error {
 func (a *app) startup() {
 	log.Setup(a.conf.LogFilePath, !service.Interactive())
 
-	if err := displayboard.Start(a.conf.SerialPortName, a.conf.SerialBaudRate); err != nil {
+	/*if err := displayboard.Start(a.conf.SerialPortName, a.conf.SerialBaudRate); err != nil {
 		log.Fatal("could not open serial connection:", err)
+	}*/
+
+	modBC, err := modbus.NewClient(&modbus.ClientConfiguration{
+		URL:     a.conf.ModbusURL,
+		Timeout: 5 * time.Second,
+	})
+	if err != nil {
+		log.Fatal("invalid modbus config:", err)
+	}
+
+	// delta PLC words
+	modBC.SetEncoding(modbus.LITTLE_ENDIAN, modbus.HIGH_WORD_FIRST)
+
+	a.deltaPLCIO = modBC
+	if err = a.deltaPLCIO.Open(); err != nil {
+		log.Println("error dialing modbus to Delta PLC at", a.conf.ModbusURL)
 	}
 
 	a.furnaceLastResult = make(map[string]time.Duration)
@@ -111,11 +127,15 @@ func (a *app) handleDisplayBoards() {
 	maxAge := time.Duration(a.conf.FurnaceResultOldTimeMinutes) * time.Minute
 	colon := true
 
+	displayData := make([]byte, len(a.conf.Furnaces)*16)
+
 	for {
 		select {
 		case <-t.C:
 			a.lock.Lock()
-			for _, f := range a.conf.Furnaces {
+			for i := range a.conf.Furnaces {
+				f := &a.conf.Furnaces[i]
+
 				d, ok := a.furnaceLastResult[f.Name]
 				if !ok {
 					continue
@@ -125,13 +145,21 @@ func (a *app) handleDisplayBoards() {
 					d = maxAge
 				}
 
-				if err := displayboard.Write(f.DisplayBoardAddress, []byte(formatDuration(d, colon))); err != nil {
+				msg := []byte(formatDuration(d, colon))
+				/*if err := displayboard.Write(f.DisplayBoardAddress, msg); err != nil {
 					log.Println("error writing to displayboard:", err)
-				}
+				}*/
+				addrOffSet := uint16(i * 16)
+				makeDisplayStringRaw(f.DisplayBoardAddress, displayData[addrOffSet:addrOffSet], msg)
 			}
 			a.lock.Unlock()
-			colon = !colon
 
+			err := a.deltaPLCIO.WriteBytes(a.conf.ModbusAddrDisplays, displayData)
+			if err != nil {
+				log.Println("failed to write display output data on delta PLC IO over Modbus:", err)
+			}
+
+			colon = !colon
 			t.Reset(interval)
 		case <-a.ctx.Done():
 			if !t.Stop() {
@@ -152,12 +180,16 @@ func (a *app) doTask(url string) {
 
 	maxAge := time.Duration(a.conf.FurnaceResultOldTimeMinutes) * time.Minute
 
+	coils := make([]bool, len(a.conf.Furnaces)*2)
+
 	a.lock.Lock()
-	defer a.lock.Unlock()
+	//defer a.lock.Unlock()
 
 	now := time.Now()
 	for i := range a.conf.Furnaces {
 		f := &a.conf.Furnaces[i]
+		addrOffSet := uint16(i * 2)
+
 		for j := range res {
 			resF := &res[j]
 
@@ -168,16 +200,25 @@ func (a *app) doTask(url string) {
 			a.furnaceLastResult[f.Name] = now.Sub(resF.TimeStamp)
 			if a.furnaceLastResult[f.Name] > maxAge {
 				// red
-				lights.SetLight(f.LightCardAddress, f.RedLightAddress)
-				lights.ClearLight(f.LightCardAddress, f.GreenLightAddress)
+				coils[addrOffSet] = true
+				coils[addrOffSet+1] = false
+				//lights.SetLight(f.LightCardAddress, f.RedLightAddress)
+				//lights.ClearLight(f.LightCardAddress, f.GreenLightAddress)
 			} else {
 				// green
-				lights.SetLight(f.LightCardAddress, f.GreenLightAddress)
-				lights.ClearLight(f.LightCardAddress, f.RedLightAddress)
+				coils[addrOffSet] = false
+				coils[addrOffSet+1] = true
+				//lights.SetLight(f.LightCardAddress, f.GreenLightAddress)
+				//lights.ClearLight(f.LightCardAddress, f.RedLightAddress)
 			}
 
 			break
 		}
+	}
+	a.lock.Unlock()
+
+	if err = a.deltaPLCIO.WriteCoils(a.conf.ModbusAddrLights, coils); err != nil {
+		log.Println("failed to set output coils for light on delta PLC IO over Modbus:", err)
 	}
 }
 
@@ -193,6 +234,36 @@ func (a *app) makeURL() string {
 	}
 
 	return url
+}
+
+// whole msg must fit in dst's cap
+func makeDisplayStringRaw(displayAddress uint8, dst, msg []byte) {
+	//b := make([]byte, 0, 16)
+	dst = append(dst, 0x0, 0x53, displayAddress, 0x3)
+	/*dst[0] = 0
+	dst[1] = 0x53
+	dst[2] = displayAddress
+	dst[3] = 0x3*/
+
+	dst = append(dst, msg...)
+	/*for i, b  := range msg {
+		dst[4+i] = b
+	}*/
+	dst = append(dst, 0x4)
+	//dst[4+len(msg)] = 0x4
+
+	var newXor byte
+	for _, dataByte := range dst {
+		newXor ^= dataByte
+	}
+	dst = append(dst, newXor)
+
+	// nonce byte is last byte written to plc that changes with each new message
+	// so that plc can know when to read a new value
+	//dst = append(dst, nonceByte)
+	//nonceByte++
+
+	//return b
 }
 
 func formatDuration(d time.Duration, withColon bool) string {

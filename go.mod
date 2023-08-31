@@ -13,5 +13,7 @@ require (
 	github.com/d2r2/go-logger v0.0.0-20181002101108-49d264032daf // indirect
 	github.com/d2r2/go-shell v0.0.0-20181002100851-c94f62cb3f85 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/goburrow/serial v0.1.0 // indirect
+	github.com/simonvetter/modbus v1.6.0 // indirect
 	golang.org/x/sys v0.0.0-20201015000850-e3ed0017c211 // indirect
 )
