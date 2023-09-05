@@ -124,6 +124,7 @@ func (a *app) handleDisplayBoards() {
 	colon := true
 
 	displayData := make([]byte, len(a.conf.Furnaces)*16)
+	nonces := make([]uint8, len(a.conf.Furnaces))
 
 	for {
 		select {
@@ -143,7 +144,13 @@ func (a *app) handleDisplayBoards() {
 
 				msg := []byte(formatDuration(d, colon))
 				addrOffSet := uint16(i * 16)
-				makeDisplayStringRaw(f.DisplayBoardAddress, displayData[addrOffSet:addrOffSet], msg)
+				makeDisplayStringRaw(
+					f.DisplayBoardAddress,
+					nonces[i],
+					displayData[addrOffSet:addrOffSet],
+					msg)
+
+				nonces[i]++
 			}
 			a.lock.Unlock()
 
@@ -157,6 +164,7 @@ func (a *app) handleDisplayBoards() {
 
 			colon = !colon
 			t.Reset(interval)
+
 		case <-a.ctx.Done():
 			if !t.Stop() {
 				<-t.C
@@ -179,7 +187,6 @@ func (a *app) doTask(url string) {
 	coils := make([]bool, len(a.conf.Furnaces)*2)
 
 	a.lock.Lock()
-	//defer a.lock.Unlock()
 
 	now := time.Now()
 	for i := range a.conf.Furnaces {
@@ -232,7 +239,7 @@ func (a *app) makeURL() string {
 }
 
 // whole msg must fit in dst's cap
-func makeDisplayStringRaw(displayAddress uint8, dst, msg []byte) {
+func makeDisplayStringRaw(displayAddress, nonce uint8, dst, msg []byte) {
 	//b := make([]byte, 0, 16)
 	dst = append(dst, 0x0, 0x53, displayAddress, 0x3)
 
@@ -247,8 +254,7 @@ func makeDisplayStringRaw(displayAddress uint8, dst, msg []byte) {
 
 	// nonce byte is last byte written to plc that changes with each new message
 	// so that plc can know when to read a new value
-	//dst = append(dst, nonceByte)
-	//nonceByte++
+	dst = append(dst, nonce)
 
 	//return b
 }
