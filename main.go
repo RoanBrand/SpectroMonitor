@@ -10,6 +10,7 @@ import (
 	"github.com/RoanBrand/SpectroMonitor/config"
 	"github.com/RoanBrand/SpectroMonitor/log"
 	"github.com/RoanBrand/SpectroMonitor/spectromon"
+
 	"github.com/kardianos/service"
 )
 

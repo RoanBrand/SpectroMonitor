@@ -1,7 +1,7 @@
 {
 	"modbus_url": "tcp://192.168.2.137:502",
 	"modbus_address_start_lights": 0,
-	"modbus_address_start_displays": 40000,
+	"modbus_address_start_displays": 0,
 
 	"log_file_path": "/home/pi/SpectroMonitor/SpectroMonitor.log",
 

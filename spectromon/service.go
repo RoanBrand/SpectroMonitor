@@ -9,15 +9,16 @@ import (
 	"time"
 
 	"github.com/RoanBrand/SpectroMonitor/config"
+	"github.com/RoanBrand/SpectroMonitor/deltaplc"
 	"github.com/RoanBrand/SpectroMonitor/http"
 	"github.com/RoanBrand/SpectroMonitor/log"
+
 	"github.com/kardianos/service"
-	"github.com/simonvetter/modbus"
 )
 
 type app struct {
 	conf       *config.Config
-	deltaPLCIO *modbus.ModbusClient
+	deltaPLCIO *deltaplc.Modbus
 
 	ctx        context.Context
 	cancelFunc context.CancelFunc
@@ -39,28 +40,20 @@ func (a *app) Start(s service.Service) error {
 func (a *app) startup() {
 	log.Setup(a.conf.LogFilePath, !service.Interactive())
 
-	modBC, err := modbus.NewClient(&modbus.ClientConfiguration{
-		URL:     a.conf.ModbusURL,
-		Timeout: 5 * time.Second,
-	})
+	d, err := deltaplc.New(a.conf.ModbusURL)
 	if err != nil {
-		log.Fatal("invalid modbus config:", err)
+		log.Fatal(err)
 	}
 
-	// delta PLC words
-	modBC.SetEncoding(modbus.LITTLE_ENDIAN, modbus.HIGH_WORD_FIRST)
-
-	a.deltaPLCIO = modBC
-	if err = a.deltaPLCIO.Open(); err != nil {
-		log.Println("error dialing modbus to Delta PLC at", a.conf.ModbusURL)
-	}
-
+	a.deltaPLCIO = d
 	a.furnaceLastResult = make(map[string]time.Duration)
 	url := a.makeURL()
+
+	a.doTask(url)
+
 	go a.runGetSetTimeJob()
 	go a.handleDisplayBoards()
 
-	a.doTask(url)
 	interval := time.Duration(a.conf.RequestIntervalSeconds) * time.Second
 	t := time.NewTimer(interval)
 
@@ -80,7 +73,7 @@ func (a *app) startup() {
 
 func (a *app) Stop(s service.Service) error {
 	a.cancelFunc()
-	return nil
+	return a.deltaPLCIO.Close()
 }
 
 func (a *app) runGetSetTimeJob() {
@@ -157,9 +150,6 @@ func (a *app) handleDisplayBoards() {
 			err := a.deltaPLCIO.WriteBytes(a.conf.ModbusAddrDisplays, displayData)
 			if err != nil {
 				log.Println("failed to write display output data on delta PLC IO over Modbus:", err)
-				if err = a.deltaPLCIO.Open(); err != nil {
-					log.Println("error dialing modbus to Delta PLC at", a.conf.ModbusURL)
-				}
 			}
 
 			colon = !colon
@@ -218,9 +208,6 @@ func (a *app) doTask(url string) {
 
 	if err = a.deltaPLCIO.WriteCoils(a.conf.ModbusAddrLights, coils); err != nil {
 		log.Println("failed to set output coils for light on delta PLC IO over Modbus:", err)
-		if err = a.deltaPLCIO.Open(); err != nil {
-			log.Println("error dialing modbus to Delta PLC at", a.conf.ModbusURL)
-		}
 	}
 }
 
