@@ -10,9 +10,6 @@ type Config struct {
 	ModbusAddrLights   uint16 `json:"modbus_address_start_lights"`
 	ModbusAddrDisplays uint16 `json:"modbus_address_start_displays"`
 
-	SerialPortName string `json:"serial_port_name"`
-	SerialBaudRate int    `json:"serial_baud_rate"`
-
 	LogFilePath string `json:"log_file_path"`
 
 	TransferSamplesOnly           bool      `json:"transfer_samples_only"`
@@ -28,22 +25,16 @@ type Config struct {
 type furnace struct {
 	Name string `json:"name"`
 
-	/*LightCardAddress  uint8 `json:"light_card_address"`
-	GreenLightAddress uint8 `json:"green_light_address"`
-	RedLightAddress   uint8 `json:"red_light_address"`*/
-
 	DisplayBoardAddress uint8 `json:"display_board_address"`
 }
 
 func LoadConfig(filePath string) (*Config, error) {
 	conf := Config{
-		SerialBaudRate:                9600,
-		SerialPortName:                "com7",
 		ResultUrl:                     "localhost/lastfurnaceresults",
-		RequestIntervalSeconds:        60 * 60,
+		RequestIntervalSeconds:        25,
 		DisplayBoardUpdateRateSeconds: 1,
 		TimeUpdateIntervalSeconds:     60 * 5,
-		FurnaceResultOldTimeMinutes:   120,
+		FurnaceResultOldTimeMinutes:   60 * 3,
 	}
 
 	f, err := os.Open(filePath)
@@ -51,9 +42,7 @@ func LoadConfig(filePath string) (*Config, error) {
 		return nil, err
 	}
 
-	dec := json.NewDecoder(f)
-	err = dec.Decode(&conf)
-	if err != nil {
+	if err = json.NewDecoder(f).Decode(&conf); err != nil {
 		return nil, err
 	}
 

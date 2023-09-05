@@ -3,8 +3,6 @@
 	"modbus_address_start_lights": 0,
 	"modbus_address_start_displays": 40000,
 
-	"serial_port_name": "com7",
-	"serial_baud_rate": 9600,
 	"log_file_path": "/home/pi/SpectroMonitor/SpectroMonitor.log",
 
 	"transfer_samples_only": false,
@@ -17,24 +15,15 @@
 	"furnaces" : [
 		{
 			"name": "HF1",
-			"display_board_address": 1,
-			"light_card_address": 32,
-			"green_light_address": 32,
-			"red_light_address": 16
+			"display_board_address": 1
 		},
 		{
 			"name": "HF2",
-			"display_board_address": 2,
-			"light_card_address": 32,
-			"green_light_address": 128,
-			"red_light_address": 64
+			"display_board_address": 2
 		},
 		{
 			"name": "HF3",
-			"display_board_address": 3,
-			"light_card_address": 33,
-			"green_light_address": 32,
-			"red_light_address": 16
+			"display_board_address": 3
 		}
 	]
 }

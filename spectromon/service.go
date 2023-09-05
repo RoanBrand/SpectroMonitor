@@ -39,10 +39,6 @@ func (a *app) Start(s service.Service) error {
 func (a *app) startup() {
 	log.Setup(a.conf.LogFilePath, !service.Interactive())
 
-	/*if err := displayboard.Start(a.conf.SerialPortName, a.conf.SerialBaudRate); err != nil {
-		log.Fatal("could not open serial connection:", err)
-	}*/
-
 	modBC, err := modbus.NewClient(&modbus.ClientConfiguration{
 		URL:     a.conf.ModbusURL,
 		Timeout: 5 * time.Second,
@@ -146,9 +142,6 @@ func (a *app) handleDisplayBoards() {
 				}
 
 				msg := []byte(formatDuration(d, colon))
-				/*if err := displayboard.Write(f.DisplayBoardAddress, msg); err != nil {
-					log.Println("error writing to displayboard:", err)
-				}*/
 				addrOffSet := uint16(i * 16)
 				makeDisplayStringRaw(f.DisplayBoardAddress, displayData[addrOffSet:addrOffSet], msg)
 			}
@@ -205,14 +198,10 @@ func (a *app) doTask(url string) {
 				// red
 				coils[addrOffSet] = true
 				coils[addrOffSet+1] = false
-				//lights.SetLight(f.LightCardAddress, f.RedLightAddress)
-				//lights.ClearLight(f.LightCardAddress, f.GreenLightAddress)
 			} else {
 				// green
 				coils[addrOffSet] = false
 				coils[addrOffSet+1] = true
-				//lights.SetLight(f.LightCardAddress, f.GreenLightAddress)
-				//lights.ClearLight(f.LightCardAddress, f.RedLightAddress)
 			}
 
 			break
@@ -246,17 +235,9 @@ func (a *app) makeURL() string {
 func makeDisplayStringRaw(displayAddress uint8, dst, msg []byte) {
 	//b := make([]byte, 0, 16)
 	dst = append(dst, 0x0, 0x53, displayAddress, 0x3)
-	/*dst[0] = 0
-	dst[1] = 0x53
-	dst[2] = displayAddress
-	dst[3] = 0x3*/
 
 	dst = append(dst, msg...)
-	/*for i, b  := range msg {
-		dst[4+i] = b
-	}*/
 	dst = append(dst, 0x4)
-	//dst[4+len(msg)] = 0x4
 
 	var newXor byte
 	for _, dataByte := range dst {
