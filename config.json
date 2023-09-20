@@ -1,7 +1,9 @@
 {
-	"serial_port_name": "com7",
-	"serial_baud_rate": 9600,
-	"log_file_path": "/home/user/SpectroMonitor.log",
+	"modbus_url": "tcp://192.168.2.137:502",
+	"modbus_address_start_lights": 0,
+	"modbus_address_start_displays": 0,
+
+	"log_file_path": "/home/pi/SpectroMonitor/SpectroMonitor.log",
 
 	"transfer_samples_only": false,
 	"result_url": "http://17.0.0.3/lastfurnaceresults",
@@ -9,21 +11,19 @@
 	"display_board_update_rate_seconds": 1,
 	"time_update_url": "http://17.0.0.3/gettime",
 	"time_update_interval_seconds": 300,
-	"furnace_result_old_time_minutes": 120,
+	"furnace_result_old_time_minutes": 180,
 	"furnaces" : [
 		{
 			"name": "HF1",
-			"display_board_address": 1,
-			"light_card_address": 32,
-			"green_light_address": 32,
-			"red_light_address": 16
+			"display_board_address": 1
 		},
 		{
 			"name": "HF2",
-			"display_board_address": 2,
-			"light_card_address": 32,
-			"green_light_address": 128,
-			"red_light_address": 64
+			"display_board_address": 2
+		},
+		{
+			"name": "HF3",
+			"display_board_address": 3
 		}
 	]
 }
