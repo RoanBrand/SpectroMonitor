@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/RoanBrand/SpectroMonitor/config"
+	"github.com/RoanBrand/SpectroMonitor/internal/config"
 )
 
 type resultResponse struct {

@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/RoanBrand/SpectroMonitor/config"
-	"github.com/RoanBrand/SpectroMonitor/deltaplc"
-	"github.com/RoanBrand/SpectroMonitor/http"
-	"github.com/RoanBrand/SpectroMonitor/log"
+	"github.com/RoanBrand/SpectroMonitor/internal/config"
+	"github.com/RoanBrand/SpectroMonitor/internal/deltaplc"
+	"github.com/RoanBrand/SpectroMonitor/internal/http"
+	"github.com/RoanBrand/SpectroMonitor/internal/log"
 
 	"github.com/kardianos/service"
 )

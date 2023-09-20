@@ -7,9 +7,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/RoanBrand/SpectroMonitor/config"
-	"github.com/RoanBrand/SpectroMonitor/log"
-	"github.com/RoanBrand/SpectroMonitor/spectromon"
+	"github.com/RoanBrand/SpectroMonitor/internal/config"
+	"github.com/RoanBrand/SpectroMonitor/internal/log"
+	"github.com/RoanBrand/SpectroMonitor/internal/spectromon"
 
 	"github.com/kardianos/service"
 )
