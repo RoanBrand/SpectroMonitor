@@ -1,0 +1,5 @@
+{
+    "db_test_samples_url":"postgres://samplecollectorservice:notrealpass@localhost:5432/testsamplesdb",
+    "results_url": "http://17.0.0.3/results",
+    "request_interval_seconds": 10
+}
