@@ -78,11 +78,14 @@ func (a *app) Stop(s service.Service) error {
 func (a *app) doTask() {
 	results, err := a.getResults()
 	if err != nil {
-		log.Println(err)
+		log.Println("failed getting results from API:", err)
 		return
 	}
 
-	a.dbs.ProcessResults(results)
+	if err = a.dbs.ProcessResults(results); err != nil {
+		log.Println("failed inserting results into DB:", err)
+		return
+	}
 }
 
 func (a *app) getResults() ([]model.Result, error) {
