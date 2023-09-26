@@ -10,6 +10,8 @@ type Config struct {
 	DBTestSamplesURL string `json:"db_test_samples_url"`
 	ResultsURL       string `json:"results_url"`
 
+	HTTPServerPort int `json:"http_server_port"`
+
 	RequestIntervalSeconds int `json:"request_interval_seconds"` // time between requests
 }
 
@@ -23,7 +25,9 @@ func LoadConfig(filePath string) (*Config, error) {
 		filePath = path.Join(path.Dir(exePath), filePath)
 	}
 
-	conf := &Config{RequestIntervalSeconds: 10}
+	conf := &Config{
+		HTTPServerPort:         80,
+		RequestIntervalSeconds: 10}
 
 	f, err := os.Open(filePath)
 	if err != nil {

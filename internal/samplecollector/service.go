@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 type app struct {
 	conf *config.Config
 	dbs  *db.DBs
+	api  *http.Server
 
 	ctx  context.Context
 	stop context.CancelFunc
@@ -52,6 +55,26 @@ func (a *app) startup() {
 	}
 
 	a.doTask()
+	go a.doTaskPeriodically()
+
+	if err := a.setupAndStartAPIServer(); err != nil {
+		panic(err)
+	}
+}
+
+func (a *app) Stop(s service.Service) error {
+	a.stop()
+	err := a.stopAPIServer()
+	a.dbs.Close()
+
+	if err != nil {
+		return fmt.Errorf("failed to stop http server: %w", err)
+	}
+
+	return nil
+}
+
+func (a *app) doTaskPeriodically() {
 	interval := time.Duration(a.conf.RequestIntervalSeconds) * time.Second
 	t := time.NewTimer(interval)
 
@@ -67,11 +90,6 @@ func (a *app) startup() {
 			return
 		}
 	}
-}
-
-func (a *app) Stop(s service.Service) error {
-	a.stop()
-	return a.dbs.Close()
 }
 
 // get latest furnace results and update database on latest
@@ -106,6 +124,43 @@ func (a *app) getResults() ([]model.Result, error) {
 	}
 
 	return res, nil
+}
+
+func (a *app) setupAndStartAPIServer() error {
+	http.HandleFunc("/results", a.resultEndpoint)
+	a.api.Addr = ":" + strconv.Itoa(a.conf.HTTPServerPort)
+	err := a.api.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+
+	return nil
+}
+
+func (a *app) stopAPIServer() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	return a.api.Shutdown(ctx)
+}
+
+func (a *app) resultEndpoint(w http.ResponseWriter, r *http.Request) {
+	results, err := a.dbs.GetLatest20ResultsForTVs()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if len(results) == 0 {
+		w.Write([]byte("[]"))
+		return
+	}
+
+	if err = json.NewEncoder(w).Encode(results); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // return true if ctx cancelled or expired.

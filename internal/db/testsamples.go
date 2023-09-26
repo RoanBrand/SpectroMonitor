@@ -44,6 +44,7 @@ type dbTestSample struct {
 	SampleName     string
 }
 
+// add new samples
 func (db *DBs) ProcessResults(results []model.Result) error {
 	ctx, cancel := context.WithTimeout(db.ctx, time.Second*5)
 	defer cancel()
@@ -107,4 +108,58 @@ func (db *DBs) ProcessResults(results []model.Result) error {
 	})
 
 	return err
+}
+
+type dbTestSampleWithMeasurements struct {
+	dbTestSample
+	C, Si, Mn, P, S, Cu, Cr, Al, Ti, Sn, Zn, Pb      float64
+	Ni, Mo, Co, Nb, V, W, Mg, Bi, Ca, As, Sb, Te, Fe *float64
+}
+
+func convertDBToTVModel(dbRes []dbTestSampleWithMeasurements) []model.Result {
+	res := make([]model.Result, len(dbRes))
+
+	for i := range dbRes {
+		mR := &res[i]
+		dbR := &dbRes[i]
+
+		mR.SampleName = dbR.SampleName
+		mR.Furnace = dbR.FurnaceName
+		mR.TimeStamp = dbR.TestTime
+
+		mR.Results = make([]model.ElementResult, 0, 12)
+		mR.Results = append(mR.Results, model.ElementResult{Element: "C", Value: dbR.C})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "Si", Value: dbR.Si})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "Mn", Value: dbR.Mn})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "P", Value: dbR.P})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "S", Value: dbR.S})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "Cu", Value: dbR.Cu})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "Cr", Value: dbR.Cr})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "Al", Value: dbR.Al})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "Ti", Value: dbR.Ti})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "Sn", Value: dbR.Sn})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "Zn", Value: dbR.Zn})
+		mR.Results = append(mR.Results, model.ElementResult{Element: "Pb", Value: dbR.Pb})
+	}
+	return res
+}
+
+// get latest 20 samples for TV
+func (db *DBs) GetLatest20ResultsForTVs() ([]model.Result, error) {
+	ctx, cancel := context.WithTimeout(db.ctx, time.Second*30)
+	defer cancel()
+
+	dbResults := make([]dbTestSampleWithMeasurements, 0, 20)
+
+	err := pgxscan.Select(ctx, db.dbp, &dbResults,
+		`SELECT * FROM test_samples JOIN sample_results USING (id) ORDER BY test_time DESC LIMIT 20;`)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	results := convertDBToTVModel(dbResults)
+	return results, nil
 }
