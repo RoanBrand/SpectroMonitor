@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -26,6 +27,11 @@ type app struct {
 
 	ctx  context.Context
 	stop context.CancelFunc
+
+	// TV API result cache
+	cacheLock    sync.RWMutex
+	cacheExpires time.Time
+	cacheResult  []byte
 }
 
 func New(c *config.Config) *app {
@@ -144,23 +150,48 @@ func (a *app) stopAPIServer() error {
 }
 
 func (a *app) resultEndpoint(w http.ResponseWriter, r *http.Request) {
-	results, err := a.dbs.GetLatest20ResultsForTVs()
+	results, err := a.getAPIResultsCache()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Write(results)
+}
+
+func (a *app) getAPIResultsCache() ([]byte, error) {
+	a.cacheLock.RLock()
+	if time.Now().Before(a.cacheExpires) {
+		defer a.cacheLock.RUnlock()
+		return a.cacheResult, nil
+	}
+
+	a.cacheLock.RUnlock()
+	a.cacheLock.Lock()
+	defer a.cacheLock.Unlock()
+
+	if time.Now().Before(a.cacheExpires) {
+		return a.cacheResult, nil
+	}
+
+	results, err := a.dbs.GetLatest20ResultsForTVs()
+	if err != nil {
+		return nil, err
+	}
 
 	if len(results) == 0 {
-		w.Write([]byte("[]"))
-		return
+		a.cacheResult = []byte("[]")
+	} else {
+		resJson, err := json.Marshal(results)
+		if err != nil {
+			return nil, err
+		}
+		a.cacheResult = resJson
 	}
 
-	if err = json.NewEncoder(w).Encode(results); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	a.cacheExpires = time.Now().Add(time.Second * 5)
+	return a.cacheResult, nil
 }
 
 // return true if ctx cancelled or expired.
