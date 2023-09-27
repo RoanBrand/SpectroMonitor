@@ -23,10 +23,11 @@ import (
 type app struct {
 	conf *config.Config
 	dbs  *db.DBs
-	api  *http.Server
 
 	ctx  context.Context
 	stop context.CancelFunc
+
+	api http.Server
 
 	// TV API result cache
 	cacheLock    sync.RWMutex

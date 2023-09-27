@@ -112,8 +112,33 @@ func (db *DBs) ProcessResults(results []model.Result) error {
 
 type dbTestSampleWithMeasurements struct {
 	dbTestSample
-	C, Si, Mn, P, S, Cu, Cr, Al, Ti, Sn, Zn, Pb      float64
-	Ni, Mo, Co, Nb, V, W, Mg, Bi, Ca, As, Sb, Te, Fe *float64
+
+	C  float64 `db:"C"`
+	Si float64 `db:"Si"`
+	Mn float64 `db:"Mn"`
+	P  float64 `db:"P"`
+	S  float64 `db:"S"`
+	Cu float64 `db:"Cu"`
+	Cr float64 `db:"Cr"`
+	Al float64 `db:"Al"`
+	Ti float64 `db:"Ti"`
+	Sn float64 `db:"Sn"`
+	Zn float64 `db:"Zn"`
+	Pb float64 `db:"Pb"`
+
+	Ni *float64 `db:"Ni"`
+	Mo *float64 `db:"Mo"`
+	Co *float64 `db:"Co"`
+	Nb *float64 `db:"Nb"`
+	V  *float64 `db:"V"`
+	W  *float64 `db:"W"`
+	Mg *float64 `db:"Mg"`
+	Bi *float64 `db:"Bi"`
+	Ca *float64 `db:"Ca"`
+	As *float64 `db:"As"`
+	Sb *float64 `db:"Sb"`
+	Te *float64 `db:"Te"`
+	Fe *float64 `db:"Fe"`
 }
 
 func convertDBToTVModel(dbRes []dbTestSampleWithMeasurements) []model.Result {
@@ -126,6 +151,7 @@ func convertDBToTVModel(dbRes []dbTestSampleWithMeasurements) []model.Result {
 		mR.SampleName = dbR.SampleName
 		mR.Furnace = dbR.FurnaceName
 		mR.TimeStamp = dbR.TestTime
+		mR.Spectro = dbR.SpectroMachine
 
 		mR.Results = make([]model.ElementResult, 0, 12)
 		mR.Results = append(mR.Results, model.ElementResult{Element: "C", Value: dbR.C})
