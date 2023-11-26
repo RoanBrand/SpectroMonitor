@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+
+    <title>SpectroDashboard</title>
+
+    <script src="js/jquery-3.2.1.min.js"></script>
+    <script src="js/bootstrap.bundle.min.js"></script>
+</head>
+<body class="font-weight-bold">
+
+<div id="banner-alert" class="alert alert-danger" style="display: none;" role="alert"></div>
+
+<table class="table table-striped">
+    <thead>
+    <tr id="table-header-row" style="font-size: 1.7em;">
+        <th><h3>LOADING...</h3></th>
+    </tr>
+    </thead>
+    <tbody id="table-body" style="font-size: 1.5em"></tbody>
+</table>
+
+<script>
+    var resultsURL = "http://17.0.0.150/results";
+
+    var populateTable = function(res) {
+        // Header
+        if (res.length > 0) {
+            if (res[0].results.length > 0) {
+                var tblHeadings = '<th scope="col">TimeStamp</th><th scope="col">Sample Name</th><th scope="col">Furnace</th>';
+                for (var i = 0; i < res[0].results.length; i++) {
+                    tblHeadings += '<th scope="col">' + res[0].results[i].element + '</th>';
+                }
+                $("#table-header-row").html(tblHeadings);
+            }
+        }
+
+        // Body
+        $("#table-body").empty();
+        for (var i = 0; i < res.length; i++) {
+            var tblDataRow =
+                '<tr><td>' + (new Date(res[i].time_stamp)).toLocaleString('en-GB') + '</td>'
+                + '<td>' + res[i].sample_name + '</td>'
+                + '<td>' + res[i].furnace + '</td>';
+            for (var j = 0; j < res[i].results.length; j++) {
+                tblDataRow += '<td>' + parseFloat(Math.round(res[i].results[j].value * 1000) / 1000).toFixed(3) + '</td>';
+            }
+            tblDataRow += '</tr>';
+            $("#table-body").append(tblDataRow);
+        }
+    };
+
+    var periodMs = 10000;
+    var timeoutMs = 8000;
+
+    var periodErrMs = 1000;
+    var errRemainingTime;
+    var connFailTimer;
+
+    var displayError = function(msg) {
+        $("#banner-alert").html(msg + '. Retrying in ' + errRemainingTime/1000 + 's');
+    };
+    var errRefresh = function(msg) {
+        var msg = msg;
+        return function() {
+            errRemainingTime -= periodErrMs;
+            displayError(msg);
+        }
+    };
+    var handleError = function(msg) {
+        errRemainingTime = periodMs
+        displayError(msg);
+        connFailTimer = setInterval(errRefresh(msg), periodErrMs);
+    };
+
+    var getResults = function() {
+        clearInterval(connFailTimer);
+        $("#banner-alert").hide();
+
+        $.ajax(resultsURL, {timeout: timeoutMs})
+            .done(function(res) {
+                populateTable(res);
+            })
+            .fail(function(err) {
+                console.error(err);
+
+                if (err.readyState === 0) {
+                    if (err.statusText == "timeout") {
+                        handleError('Timeout connecting to: "' + resultsURL + '"');
+                    } else {
+                        handleError('Unable to make connection to: "' + resultsURL + '"');
+                    }
+                } else {
+                    handleError('Server "' + resultsURL + '" error: (' + err.status + ') ' + err.statusText + ': ' + err.responseText);
+                }
+                $("#banner-alert").show();
+            })
+            .always(function() {
+                setTimeout(getResults, periodMs);
+            });
+    };
+
+    // Init
+    $(function() {
+        getResults();
+    });
+</script>
+
+</body>
+</html>

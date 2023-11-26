@@ -101,7 +101,7 @@ func (db *DBs) ProcessResults(results []model.Result) error {
 
 			_, err = tx.Exec(ctx, rQry.String(), args...)
 			if err != nil {
-				return fmt.Errorf("failed to add new test sample results: %w", err)
+				return fmt.Errorf("failed to add new test sample results. Insert qry: %s. Error: %w", rQry.String(), err)
 			}
 		}
 		return nil

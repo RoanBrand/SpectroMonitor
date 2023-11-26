@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"syscall"
@@ -46,6 +47,11 @@ func (a *app) Start(s service.Service) error {
 }
 
 func (a *app) startup() {
+	exePath, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+
 	// DB retry until connect
 	const retryTime = time.Second * 30
 	for {
@@ -64,7 +70,9 @@ func (a *app) startup() {
 	a.doTask()
 	go a.doTaskPeriodically()
 
-	if err := a.setupAndStartAPIServer(); err != nil {
+	websiteDir := filepath.Join(filepath.Dir(exePath), "website")
+
+	if err := a.setupAndStartAPIServer(websiteDir); err != nil {
 		panic(err)
 	}
 }
@@ -133,9 +141,11 @@ func (a *app) getResults() ([]model.Result, error) {
 	return res, nil
 }
 
-func (a *app) setupAndStartAPIServer() error {
+func (a *app) setupAndStartAPIServer(websiteFilesPath string) error {
+	http.Handle("/", http.FileServer(http.Dir(websiteFilesPath)))
 	http.HandleFunc("/results", a.resultEndpoint)
 	a.api.Addr = ":" + strconv.Itoa(a.conf.HTTPServerPort)
+
 	err := a.api.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
@@ -157,6 +167,7 @@ func (a *app) resultEndpoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(results)
 }
