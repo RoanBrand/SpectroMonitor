@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/RoanBrand/SpectroMonitor/log"
+	"github.com/RoanBrand/SpectroMonitor/internal/log"
 
 	"github.com/simonvetter/modbus"
 )
