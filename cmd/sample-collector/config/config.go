@@ -8,11 +8,17 @@ import (
 
 type Config struct {
 	DBTestSamplesURL string `json:"db_test_samples_url"`
-	ResultsURL       string `json:"results_url"`
+
+	Spectros []*SpectroMachine `json:"spectros"`
 
 	HTTPServerPort int `json:"http_server_port"`
 
 	RequestIntervalSeconds int `json:"request_interval_seconds"` // time between requests
+}
+
+type SpectroMachine struct {
+	Number     int    `json:"number"`
+	ResultsURL string `json:"results_url"`
 }
 
 func LoadConfig(filePath string) (*Config, error) {

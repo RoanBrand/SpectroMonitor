@@ -45,7 +45,7 @@ type dbTestSample struct {
 }
 
 // add new samples
-func (db *DBs) ProcessResults(results []model.Result) error {
+func (db *DBs) ProcessResults(results []model.ResultXML) error {
 	ctx, cancel := context.WithTimeout(db.ctx, time.Second*5)
 	defer cancel()
 
@@ -73,7 +73,7 @@ func (db *DBs) ProcessResults(results []model.Result) error {
 
 			err = tx.QueryRow(ctx,
 				`INSERT INTO test_samples (test_time, spectro_machine, furnace_name, sample_name) VALUES ($1, $2, $3, $4) RETURNING id;`,
-				r.TimeStamp, r.Spectro, r.Furnace, r.SampleName).Scan(&tsId)
+				r.TimeStamp, r.Spectro, r.Furnace, r.ID).Scan(&tsId)
 			if err != nil {
 				return fmt.Errorf("failed to add new test sample: %w", err)
 			}
@@ -83,18 +83,20 @@ func (db *DBs) ProcessResults(results []model.Result) error {
 
 			rQry.Reset()
 			rQry.WriteString(`INSERT INTO sample_results (id`)
-			for i, er := range r.Results {
+			j := 1
+			for elName, elValue := range r.Results {
 				rQry.WriteString(`, "`)
-				rQry.WriteString(er.Element)
+				rQry.WriteString(elName)
 				rQry.WriteString(`"`)
 
-				args[i+1] = er.Value
+				args[j] = elValue
+				j++
 			}
 
 			rQry.WriteString(`) VALUES ($1`)
-			for ern := range r.Results {
+			for j := 0; j < len(r.Results); j++ {
 				rQry.WriteString(`, $`)
-				rQry.WriteString(strconv.Itoa(ern + 2))
+				rQry.WriteString(strconv.Itoa(j + 2))
 			}
 
 			rQry.WriteString(`);`)
@@ -188,4 +190,45 @@ func (db *DBs) GetLatest20ResultsForTVs() ([]model.Result, error) {
 
 	results := convertDBToTVModel(dbResults)
 	return results, nil
+}
+
+func (db *DBs) GetLatestResultsOfFurnaces(furnaces []string) ([]model.Result, error) {
+	ctx, cancel := context.WithTimeout(db.ctx, time.Second*15)
+	defer cancel()
+
+	var qry strings.Builder
+	args := make([]interface{}, len(furnaces))
+
+	for i, f := range furnaces {
+		qry.WriteString(`(SELECT * FROM test_samples WHERE UPPER(furnace_name) = $`)
+		qry.WriteString(strconv.Itoa(i + 1))
+		qry.WriteString(` ORDER BY id DESC LIMIT 1)`)
+
+		if i < len(furnaces)-1 {
+			qry.WriteString(` UNION `)
+		} else {
+			qry.WriteByte(';')
+		}
+		args[i] = strings.ToUpper(f)
+	}
+
+	var lastSamples []dbTestSample
+	err := pgxscan.Select(ctx, db.dbp, &lastSamples, qry.String(), args...)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	res := make([]model.Result, len(lastSamples))
+	for i := range lastSamples {
+		ls := &lastSamples[i]
+		res[i].SampleName = ls.SampleName
+		res[i].Furnace = ls.FurnaceName
+		res[i].TimeStamp = ls.TestTime
+		res[i].Spectro = ls.SpectroMachine
+	}
+
+	return res, nil
 }

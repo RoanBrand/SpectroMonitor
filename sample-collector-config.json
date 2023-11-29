@@ -1,6 +1,12 @@
 {
     "db_test_samples_url":"postgres://samplecollectorservice:notrealpass@localhost:5432/testsamplesdb",
-    "results_url": "http://17.0.0.3/results",
+    "spectros": [{
+        "number": 3,
+        "results_url": "http://17.0.0.5/results"
+    },{
+        "number": 4,
+        "results_url": "http://17.0.0.6/results"
+    }],
     "http_server_port": 80,
-    "request_interval_seconds": 10
+    "request_interval_seconds": 15
 }
