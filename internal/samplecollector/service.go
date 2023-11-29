@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"sync"
 	"syscall"
@@ -109,20 +110,55 @@ func (a *app) doTaskPeriodically() {
 
 // get latest furnace results and update database on latest
 func (a *app) doTask() {
-	results, err := a.getResults()
-	if err != nil {
-		log.Println("failed getting results from API:", err)
-		return
+	var l sync.Mutex
+	var wg sync.WaitGroup
+	results := make([]model.ResultXML, 0, len(a.conf.Spectros)*20)
+
+	wg.Add(len(a.conf.Spectros))
+
+	for _, spectro := range a.conf.Spectros {
+		go func(spectro *config.SpectroMachine) {
+			defer wg.Done()
+
+			sRes, err := a.getResults(spectro.ResultsURL)
+			if err != nil {
+				log.Printf("failed getting results from spectro %d API %s: %v", spectro.Number, spectro.ResultsURL, err)
+				return
+			}
+
+			for i := range sRes {
+				sRes[i].Spectro = spectro.Number
+			}
+
+			l.Lock()
+			results = append(results, sRes...)
+			l.Unlock()
+		}(spectro)
 	}
 
-	if err = a.dbs.ProcessResults(results); err != nil {
+	wg.Wait()
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].TimeStamp.After(results[j].TimeStamp)
+	})
+
+	if err := a.dbs.ProcessResults(results); err != nil {
 		log.Println("failed inserting results into DB:", err)
 		return
 	}
 }
 
-func (a *app) getResults() ([]model.Result, error) {
-	resp, err := http.Get(a.conf.ResultsURL)
+func (a *app) getResults(url string) ([]model.ResultXML, error) {
+	ctx, cancel := context.WithTimeout(a.ctx, time.Second*10)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var c http.Client
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +168,7 @@ func (a *app) getResults() ([]model.Result, error) {
 	}
 
 	defer resp.Body.Close()
-	var res []model.Result
+	var res []model.ResultXML
 
 	if err = json.NewDecoder(resp.Body).Decode(&res); err != nil {
 		return nil, err
@@ -144,6 +180,7 @@ func (a *app) getResults() ([]model.Result, error) {
 func (a *app) setupAndStartAPIServer(websiteFilesPath string) error {
 	http.Handle("/", http.FileServer(http.Dir(websiteFilesPath)))
 	http.HandleFunc("/results", a.resultEndpoint)
+	http.HandleFunc("/lastfurnaceresults", a.lastFurnaceResultEndpoint)
 	a.api.Addr = ":" + strconv.Itoa(a.conf.HTTPServerPort)
 
 	err := a.api.ListenAndServe()
@@ -170,6 +207,26 @@ func (a *app) resultEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(results)
+}
+
+func (a *app) lastFurnaceResultEndpoint(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	results, err := a.dbs.GetLatestResultsOfFurnaces(q["f"])
+	if err != nil {
+		log.Println("error GetLatestResultsOfFurnaces: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+
+	err = json.NewEncoder(w).Encode(results)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (a *app) getAPIResultsCache() ([]byte, error) {
